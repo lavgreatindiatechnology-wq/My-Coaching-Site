@@ -1,422 +1,911 @@
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-let authMode='login',currentUser=null,currentCoaching=null;
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
-const $=id=>document.getElementById(id);
-const escapeHtml=s=>{const d=document.createElement('div');d.textContent=s||'';return d.innerHTML};
+let currentUser = null;
+let currentCoaching = null;
+let authMode = "login";
 
-function showPage(name){
-  ['homePage','authPage','dashboardPage','publicPage'].forEach(x=>$(x).classList.add('hidden'));
-  $(name+'Page').classList.remove('hidden');
-  window.scrollTo(0,0);
+function $(id) {
+  return document.getElementById(id);
 }
 
-function setAuthMode(mode){
-  authMode=mode;
-  $('loginTab').classList.toggle('active',mode==='login');
-  $('registerTab').classList.toggle('active',mode==='register');
-  $('authTitle').textContent=mode==='login'?'अपने account में Login करें':'नई Coaching के लिए Account बनाएं';
-  $('authButton').textContent=mode==='login'?'Login':'Create Account';
-  $('authMessage').textContent='';
+function escapeHtml(text = "") {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
 }
 
-function getPublicSlug(){
-  const m=location.hash.match(/^#\/c\/([^/?#]+)/);
-  return m?decodeURIComponent(m[1]):null;
-}
+/* =========================
+   PAGE SHOW
+========================= */
 
-function updateGeneratedLink(){
-  if(!currentCoaching)return;
-  const base=location.origin+location.pathname;
-  $('publicLink').value=base+'#/c/'+encodeURIComponent(currentCoaching.slug);
-  $('generatedBox').classList.remove('hidden');
-}
+function show(page) {
+  document.querySelectorAll(".page").forEach(function (item) {
+    item.classList.add("hidden");
+  });
 
-async function init(){
-  const {data:{session}}=await supabaseClient.auth.getSession();
-  currentUser=session?.user||null;
-  updateNav();
-  const slug=getPublicSlug();
-  if(slug)loadPublicPage(slug);
-}
+  const pageElement = $(page);
 
-function updateNav(){
-  $('loginNav').classList.toggle('hidden',!!currentUser);
-  $('dashboardNav').classList.toggle('hidden',!currentUser);
-  $('logoutNav').classList.toggle('hidden',!currentUser);
-}
-
-$('authForm').addEventListener('submit',async e=>{
-  e.preventDefault();
-
-  const email=$('authEmail').value.trim();
-  const password=$('authPassword').value;
-
-  $('authMessage').textContent='Please wait...';
-
-  const r=authMode==='register'
-    ?await supabaseClient.auth.signUp({email,password})
-    :await supabaseClient.auth.signInWithPassword({email,password});
-
-  if(r.error){
-    $('authMessage').textContent='❌ '+r.error.message;
-    return;
+  if (pageElement) {
+    pageElement.classList.remove("hidden");
   }
 
-  if(authMode==='register'&&!r.data.session){
-    $('authMessage').textContent='✅ Account created! Email confirmation के बाद Login करें।';
-    return;
-  }
-
-  currentUser=r.data.user||r.data.session?.user;
-  updateNav();
-  openDashboard();
-});
-
-async function logout(){
-  await supabaseClient.auth.signOut();
-  currentUser=null;
-  currentCoaching=null;
-  updateNav();
-  showPage('home');
+  window.scrollTo(0, 0);
 }
 
-async function openDashboard(){
-  if(!currentUser){
-    showPage('auth');
-    return;
+window.show = show;
+
+/* =========================
+   LOGIN / REGISTER MODE
+========================= */
+
+function mode(type) {
+  authMode = type;
+
+  $("loginTab").classList.remove("active");
+  $("regTab").classList.remove("active");
+
+  if (type === "login") {
+    $("loginTab").classList.add("active");
+    $("authSubmit").textContent = "Login";
+  } else {
+    $("regTab").classList.add("active");
+    $("authSubmit").textContent = "Create Account";
   }
 
-  if(location.hash.startsWith('#/c/')){
-    history.replaceState(null,'',location.pathname);
-  }
+  $("authMsg").textContent = "";
+}
 
-  showPage('dashboard');
+window.mode = mode;
 
-  const {data}=await supabaseClient
-    .from('coachings')
-    .select('*')
-    .eq('owner_id',currentUser.id)
-    .maybeSingle();
+/* =========================
+   NAVIGATION
+========================= */
 
-  currentCoaching=data||null;
-
-  if(data){
-    $('coachingName').value=data.coaching_name||'';
-    $('slug').value=data.slug||'';
-    $('description').value=data.description||'';
-    $('founderName').value=data.founder_name||'';
-    $('founderDesignation').value=data.founder_designation||'Director';
-    $('phone').value=data.phone||'';
-    $('contactEmail').value=data.email||'';
-    $('address').value=data.address||'';
-
-    if(data.logo_url){
-      $('logoPreview').src=data.logo_url;
-      $('logoPreview').classList.remove('hidden');
-    }
-
-    if(data.founder_photo_url){
-      $('founderPreview').src=data.founder_photo_url;
-      $('founderPreview').classList.remove('hidden');
-    }
-
-    updateGeneratedLink();
-    loadBatches();
-  }else{
-    $('generatedBox').classList.add('hidden');
-    $('batchList').innerHTML='पहले Coaching को Save करें।';
+function updateNavigation() {
+  if (currentUser) {
+    $("authBtn").classList.add("hidden");
+    $("dashBtn").classList.remove("hidden");
+    $("logoutBtn").classList.remove("hidden");
+  } else {
+    $("authBtn").classList.remove("hidden");
+    $("dashBtn").classList.add("hidden");
+    $("logoutBtn").classList.add("hidden");
   }
 }
 
-$('logoFile').addEventListener('change',e=>preview(e,'logoPreview'));
-$('founderFile').addEventListener('change',e=>preview(e,'founderPreview'));
+/* =========================
+   AUTH FORM
+========================= */
 
-function preview(e,id){
-  const f=e.target.files[0];
+$("authForm").addEventListener("submit", async function (event) {
 
-  if(f){
-    $(id).src=URL.createObjectURL(f);
-    $(id).classList.remove('hidden');
-  }
-}
+  event.preventDefault();
 
-async function uploadImage(file,folder){
-  if(!file)return null;
+  const email = $("email").value.trim();
+  const password = $("password").value;
 
-  const ext=file.name.split('.').pop();
-  const path=`${currentUser.id}/${folder}-${Date.now()}.${ext}`;
+  $("authMsg").textContent = "Please wait...";
 
-  const {error}=await supabaseClient
-    .storage
-    .from('coaching-images')
-    .upload(path,file,{upsert:true});
+  let result;
 
-  if(error)throw error;
+  if (authMode === "register") {
 
-  return supabaseClient
-    .storage
-    .from('coaching-images')
-    .getPublicUrl(path).data.publicUrl;
-}
-
-$('coachingForm').addEventListener('submit',async e=>{
-  e.preventDefault();
-
-  try{
-    $('saveMessage').textContent='Saving...';
-
-    let logo=currentCoaching?.logo_url||null;
-    let founderPhoto=currentCoaching?.founder_photo_url||null;
-
-    if($('logoFile').files[0]){
-      logo=await uploadImage($('logoFile').files[0],'logo');
-    }
-
-    if($('founderFile').files[0]){
-      founderPhoto=await uploadImage($('founderFile').files[0],'founder');
-    }
-
-    const slug=$('slug').value.trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g,'-')
-      .replace(/-+/g,'-')
-      .replace(/^-|-$/g,'');
-
-    const payload={
-      owner_id:currentUser.id,
-      coaching_name:$('coachingName').value.trim(),
-      slug,
-      description:$('description').value.trim(),
-      logo_url:logo,
-      address:$('address').value.trim(),
-      phone:$('phone').value.trim(),
-      email:$('contactEmail').value.trim(),
-      founder_name:$('founderName').value.trim(),
-      founder_designation:$('founderDesignation').value.trim()||'Director',
-      founder_photo_url:founderPhoto,
-      updated_at:new Date().toISOString()
-    };
-
-    const r=currentCoaching
-      ?await supabaseClient.from('coachings').update(payload).eq('id',currentCoaching.id).select().single()
-      :await supabaseClient.from('coachings').insert(payload).select().single();
-
-    if(r.error)throw r.error;
-
-    currentCoaching=r.data;
-
-    $('saveMessage').textContent='✅ Saved successfully! आपका page link तैयार है।';
-
-    updateGeneratedLink();
-    loadBatches();
-
-  }catch(err){
-    $('saveMessage').textContent='❌ '+err.message;
-  }
-});
-
-async function loadBatches(){
-  if(!currentCoaching)return;
-
-  const {data,error}=await supabaseClient
-    .from('batches')
-    .select('*')
-    .eq('coaching_id',currentCoaching.id)
-    .order('created_at',{ascending:false});
-
-  if(error){
-    $('batchList').textContent=error.message;
-    return;
-  }
-
-  $('batchList').innerHTML=(data||[]).map(b=>`
-    <div class="batch-item">
-      <div>
-        <b>${escapeHtml(b.batch_name)}</b>
-        <small>${escapeHtml(b.description||'')}</small>
-      </div>
-      <button onclick="deleteBatch('${b.id}')">🗑️</button>
-    </div>
-  `).join('')||'<p>अभी कोई Batch नहीं जोड़ा गया।</p>';
-}
-
-async function addBatch(){
-  const name=$('batchName').value.trim();
-  const description=$('batchDescription').value.trim();
-
-  if(!currentCoaching){
-    alert('पहले Coaching Save करें।');
-    return;
-  }
-
-  if(!name)return;
-
-  const {error}=await supabaseClient
-    .from('batches')
-    .insert({
-      coaching_id:currentCoaching.id,
-      batch_name:name,
-      description
+    result = await supabaseClient.auth.signUp({
+      email: email,
+      password: password
     });
 
-  if(error){
-    alert(error.message);
+  } else {
+
+    result = await supabaseClient.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+  }
+
+  if (result.error) {
+    $("authMsg").textContent = "❌ " + result.error.message;
     return;
   }
 
-  $('batchName').value='';
-  $('batchDescription').value='';
+  if (authMode === "register" && !result.data.session) {
+
+    $("authMsg").textContent =
+      "✅ Account created! Please check your email.";
+
+    return;
+  }
+
+  currentUser =
+    result.data.user ||
+    (result.data.session ? result.data.session.user : null);
+
+  updateNavigation();
+
+  $("authMsg").textContent = "";
+
+  dashboard();
+});
+
+/* =========================
+   LOGOUT
+========================= */
+
+async function logout() {
+
+  await supabaseClient.auth.signOut();
+
+  currentUser = null;
+  currentCoaching = null;
+
+  updateNavigation();
+
+  show("home");
+}
+
+window.logout = logout;
+
+/* =========================
+   DASHBOARD
+========================= */
+
+async function dashboard() {
+
+  if (!currentUser) {
+    show("auth");
+    return;
+  }
+
+  history.replaceState(
+    null,
+    "",
+    window.location.pathname
+  );
+
+  show("dash");
+
+  const result = await supabaseClient
+    .from("coachings")
+    .select("*")
+    .eq("owner_id", currentUser.id)
+    .maybeSingle();
+
+  if (result.error) {
+    console.error(result.error);
+    return;
+  }
+
+  currentCoaching = result.data;
+
+  if (!currentCoaching) {
+
+    $("linkBox").classList.add("hidden");
+    $("batches").innerHTML =
+      "<p>पहले Coaching Information Save करें।</p>";
+
+    return;
+  }
+
+  $("coachingName").value =
+    currentCoaching.coaching_name || "";
+
+  $("slug").value =
+    currentCoaching.slug || "";
+
+  $("description").value =
+    currentCoaching.description || "";
+
+  $("founderName").value =
+    currentCoaching.founder_name || "";
+
+  $("designation").value =
+    currentCoaching.founder_designation || "Director";
+
+  $("phone").value =
+    currentCoaching.phone || "";
+
+  $("contactEmail").value =
+    currentCoaching.email || "";
+
+  $("address").value =
+    currentCoaching.address || "";
+
+  if (currentCoaching.logo_url) {
+
+    $("logoPreview").src =
+      currentCoaching.logo_url;
+
+    $("logoPreview").classList.remove("hidden");
+  }
+
+  if (currentCoaching.founder_photo_url) {
+
+    $("founderPreview").src =
+      currentCoaching.founder_photo_url;
+
+    $("founderPreview").classList.remove("hidden");
+  }
+
+  updatePublicLink();
 
   loadBatches();
 }
 
-async function deleteBatch(id){
-  if(confirm('Delete this batch?')){
-    await supabaseClient
-      .from('batches')
-      .delete()
-      .eq('id',id);
+window.dashboard = dashboard;
 
-    loadBatches();
+/* =========================
+   IMAGE PREVIEW
+========================= */
+
+$("logo").addEventListener("change", function (event) {
+
+  const file = event.target.files[0];
+
+  if (!file) return;
+
+  $("logoPreview").src =
+    URL.createObjectURL(file);
+
+  $("logoPreview").classList.remove("hidden");
+});
+
+
+$("founderPhoto").addEventListener("change", function (event) {
+
+  const file = event.target.files[0];
+
+  if (!file) return;
+
+  $("founderPreview").src =
+    URL.createObjectURL(file);
+
+  $("founderPreview").classList.remove("hidden");
+});
+
+/* =========================
+   IMAGE UPLOAD
+========================= */
+
+async function uploadImage(file, folder) {
+
+  if (!file) return null;
+
+  const extension =
+    file.name.split(".").pop();
+
+  const filePath =
+    currentUser.id +
+    "/" +
+    folder +
+    "-" +
+    Date.now() +
+    "." +
+    extension;
+
+  const uploadResult =
+    await supabaseClient
+      .storage
+      .from("coaching-images")
+      .upload(filePath, file);
+
+  if (uploadResult.error) {
+    throw uploadResult.error;
+  }
+
+  const urlResult =
+    supabaseClient
+      .storage
+      .from("coaching-images")
+      .getPublicUrl(filePath);
+
+  return urlResult.data.publicUrl;
+}
+
+/* =========================
+   SAVE COACHING
+========================= */
+
+$("coachingForm").addEventListener(
+  "submit",
+  async function (event) {
+
+    event.preventDefault();
+
+    try {
+
+      $("saveMsg").textContent =
+        "Saving...";
+
+      let logoUrl =
+        currentCoaching
+          ? currentCoaching.logo_url
+          : null;
+
+      let founderPhotoUrl =
+        currentCoaching
+          ? currentCoaching.founder_photo_url
+          : null;
+
+
+      const logoFile =
+        $("logo").files[0];
+
+      const founderFile =
+        $("founderPhoto").files[0];
+
+
+      if (logoFile) {
+
+        logoUrl =
+          await uploadImage(
+            logoFile,
+            "logo"
+          );
+      }
+
+
+      if (founderFile) {
+
+        founderPhotoUrl =
+          await uploadImage(
+            founderFile,
+            "founder"
+          );
+      }
+
+
+      const slug =
+        $("slug")
+          .value
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9-]/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-|-$/g, "");
+
+
+      const coachingData = {
+
+        owner_id: currentUser.id,
+
+        coaching_name:
+          $("coachingName").value.trim(),
+
+        slug: slug,
+
+        description:
+          $("description").value.trim(),
+
+        logo_url: logoUrl,
+
+        founder_name:
+          $("founderName").value.trim(),
+
+        founder_designation:
+          $("designation").value.trim(),
+
+        founder_photo_url:
+          founderPhotoUrl,
+
+        phone:
+          $("phone").value.trim(),
+
+        email:
+          $("contactEmail").value.trim(),
+
+        address:
+          $("address").value.trim(),
+
+        updated_at:
+          new Date().toISOString()
+      };
+
+
+      let result;
+
+      if (currentCoaching) {
+
+        result =
+          await supabaseClient
+            .from("coachings")
+            .update(coachingData)
+            .eq("id", currentCoaching.id)
+            .select()
+            .single();
+
+      } else {
+
+        result =
+          await supabaseClient
+            .from("coachings")
+            .insert(coachingData)
+            .select()
+            .single();
+      }
+
+
+      if (result.error) {
+        throw result.error;
+      }
+
+
+      currentCoaching =
+        result.data;
+
+
+      $("saveMsg").textContent =
+        "✅ Coaching सफलतापूर्वक Save हो गई!";
+
+
+      updatePublicLink();
+
+      loadBatches();
+
+    } catch (error) {
+
+      console.error(error);
+
+      $("saveMsg").textContent =
+        "❌ " + error.message;
+    }
+
+  }
+);
+
+/* =========================
+   PUBLIC LINK
+========================= */
+
+function updatePublicLink() {
+
+  if (!currentCoaching) return;
+
+  const baseUrl =
+    window.location.origin +
+    window.location.pathname;
+
+  $("publicLink").value =
+    baseUrl +
+    "#/c/" +
+    encodeURIComponent(
+      currentCoaching.slug
+    );
+
+  $("linkBox").classList.remove("hidden");
+}
+
+
+/* =========================
+   COPY LINK
+========================= */
+
+async function copyLink() {
+
+  try {
+
+    await navigator.clipboard.writeText(
+      $("publicLink").value
+    );
+
+    alert("✅ Link Copied!");
+
+  } catch (error) {
+
+    $("publicLink").select();
+
+    document.execCommand("copy");
+
+    alert("✅ Link Copied!");
   }
 }
 
-function copyPublicLink(){
-  navigator.clipboard.writeText($('publicLink').value);
-  alert('✅ Link copied!');
+window.copyLink = copyLink;
+
+
+/* =========================
+   OPEN LINK
+========================= */
+
+function openLink() {
+
+  window.location.href =
+    $("publicLink").value;
 }
 
-function openPublicPage(){
-  location.href=$('publicLink').value;
-}
+window.openLink = openLink;
 
-async function loadPublicPage(slug){
-  showPage('public');
 
-  const {data:c,error}=await supabaseClient
-    .from('coachings')
-    .select('*')
-    .eq('slug',slug)
-    .single();
+/* =========================
+   ADD BATCH
+========================= */
 
-  if(error||!c){
-    $('publicContent').innerHTML=`
-      <div class="notfound">
-        <h1>Page Not Found</h1>
-        <p>यह Coaching Page उपलब्ध नहीं है।</p>
-      </div>
-    `;
+async function addBatch() {
+
+  if (!currentCoaching) {
+
+    alert(
+      "पहले Coaching Information Save करें।"
+    );
+
     return;
   }
 
-  const {data:batches=[]}=await supabaseClient
-    .from('batches')
-    .select('*')
-    .eq('coaching_id',c.id)
-    .order('created_at',{ascending:false});
 
-  $('publicContent').innerHTML=`
-    <div class="public-hero">
+  const batchName =
+    $("batchName").value.trim();
 
-      ${c.logo_url
-        ?`<img class="public-logo" src="${c.logo_url}">`
-        :'<div class="public-logo placeholder">🎓</div>'}
+  const batchDescription =
+    $("batchDesc").value.trim();
 
-      <div>
-        <h1>${escapeHtml(c.coaching_name)}</h1>
-        <p>${escapeHtml(c.description||'Welcome to our Coaching Institute')}</p>
+
+  if (!batchName) {
+
+    alert("Batch Name डालें।");
+
+    return;
+  }
+
+
+  const result =
+    await supabaseClient
+      .from("batches")
+      .insert({
+
+        coaching_id:
+          currentCoaching.id,
+
+        batch_name:
+          batchName,
+
+        description:
+          batchDescription
+
+      });
+
+
+  if (result.error) {
+
+    alert("❌ " + result.error.message);
+
+    return;
+  }
+
+
+  $("batchName").value = "";
+  $("batchDesc").value = "";
+
+  loadBatches();
+}
+
+window.addBatch = addBatch;
+
+
+/* =========================
+   LOAD BATCHES
+========================= */
+
+async function loadBatches() {
+
+  if (!currentCoaching) return;
+
+
+  const result =
+    await supabaseClient
+      .from("batches")
+      .select("*")
+      .eq(
+        "coaching_id",
+        currentCoaching.id
+      )
+      .order(
+        "created_at",
+        { ascending: false }
+      );
+
+
+  if (result.error) {
+
+    console.error(result.error);
+
+    return;
+  }
+
+
+  const batches =
+    result.data || [];
+
+
+  if (batches.length === 0) {
+
+    $("batches").innerHTML =
+      "<p>अभी कोई Batch नहीं है।</p>";
+
+    return;
+  }
+
+
+  $("batches").innerHTML =
+    batches.map(function (batch) {
+
+      return `
+        <div class="batch-item">
+
+          <div>
+
+            <b>
+              ${escapeHtml(batch.batch_name)}
+            </b>
+
+            <p>
+              ${escapeHtml(
+                batch.description || ""
+              )}
+            </p>
+
+          </div>
+
+        </div>
+      `;
+
+    }).join("");
+}
+
+
+/* =========================
+   PUBLIC PAGE
+========================= */
+
+async function loadPublicPage(slug) {
+
+  show("public");
+
+  $("publicContent").innerHTML =
+    "<p class='loading'>Loading...</p>";
+
+
+  const result =
+    await supabaseClient
+      .from("coachings")
+      .select("*")
+      .eq("slug", slug)
+      .single();
+
+
+  if (result.error || !result.data) {
+
+    $("publicContent").innerHTML = `
+      <div class="card">
+
+        <h1>Page Not Found</h1>
+
+        <p>
+          यह Coaching Page उपलब्ध नहीं है।
+        </p>
+
+        <button
+          class="primary"
+          onclick="show('home')"
+        >
+          Home
+        </button>
+
+      </div>
+    `;
+
+    return;
+  }
+
+
+  const coaching =
+    result.data;
+
+
+  const batchResult =
+    await supabaseClient
+      .from("batches")
+      .select("*")
+      .eq(
+        "coaching_id",
+        coaching.id
+      );
+
+
+  const batches =
+    batchResult.data || [];
+
+
+  $("publicContent").innerHTML = `
+
+    <div class="wrap">
+
+      <div class="card public-header">
+
+        ${
+          coaching.logo_url
+            ? `<img class="public-logo"
+                 src="${coaching.logo_url}">`
+            : "🎓"
+        }
+
+        <h1>
+          ${escapeHtml(
+            coaching.coaching_name
+          )}
+        </h1>
+
+        <p>
+          ${escapeHtml(
+            coaching.description || ""
+          )}
+        </p>
+
       </div>
 
-    </div>
 
-    <div class="public-grid">
+      <div class="card">
 
-      <section class="public-card">
         <h2>📚 Current Batches</h2>
 
-        ${batches.length
-          ?batches.map(b=>`
-            <div class="public-batch">
-              <b>${escapeHtml(b.batch_name)}</b>
-              <p>${escapeHtml(b.description||'')}</p>
-            </div>
-          `).join('')
-          :'<p>Current batches जल्द उपलब्ध होंगे।</p>'}
+        ${
+          batches.length
+            ? batches.map(function (batch) {
 
-      </section>
+                return `
+                  <div class="public-batch">
 
-      <section class="public-card founder">
+                    <h3>
+                      ${escapeHtml(
+                        batch.batch_name
+                      )}
+                    </h3>
 
-        ${c.founder_photo_url
-          ?`<img src="${c.founder_photo_url}" class="founder-photo">`
-          :''}
+                    <p>
+                      ${escapeHtml(
+                        batch.description || ""
+                      )}
+                    </p>
 
-        <div>
-          <h2>👨‍🏫 ${escapeHtml(c.founder_designation||'Director')}</h2>
-          <h3>${escapeHtml(c.founder_name||'')}</h3>
-          <p>Founder / Director</p>
-        </div>
+                  </div>
+                `;
 
-      </section>
+              }).join("")
 
-      <section class="public-card contact">
+            : "<p>अभी कोई Batch उपलब्ध नहीं है।</p>"
+        }
+
+      </div>
+
+
+      <div class="card">
+
+        <h2>
+          👨‍🏫
+          ${escapeHtml(
+            coaching.founder_designation ||
+            "Director"
+          )}
+        </h2>
+
+        ${
+          coaching.founder_photo_url
+            ? `<img
+                 class="founder-photo"
+                 src="${coaching.founder_photo_url}"
+               >`
+            : ""
+        }
+
+        <h3>
+          ${escapeHtml(
+            coaching.founder_name || ""
+          )}
+        </h3>
+
+      </div>
+
+
+      <div class="card">
+
         <h2>📞 Contact Details</h2>
 
-        <p>📍 ${escapeHtml(c.address||'Address उपलब्ध नहीं')}</p>
-        <p>📱 ${escapeHtml(c.phone||'')}</p>
-        <p>✉️ ${escapeHtml(c.email||'')}</p>
+        <p>
+          📱 ${escapeHtml(
+            coaching.phone || ""
+          )}
+        </p>
 
-      </section>
+        <p>
+          ✉️ ${escapeHtml(
+            coaching.email || ""
+          )}
+        </p>
+
+        <p>
+          📍 ${escapeHtml(
+            coaching.address || ""
+          )}
+        </p>
+
+      </div>
+
+
+      <a
+        class="primary student-login"
+        href="https://portal.greatindia.technology/"
+      >
+        🎓 Student Login / Register
+      </a>
 
     </div>
-
-    <a class="student-btn" href="https://portal.greatindia.technology/">
-      🎓 STUDENT LOGIN / REGISTER
-    </a>
   `;
 }
 
-window.addEventListener('hashchange',()=>{
-  const slug=getPublicSlug();
 
-  if(slug){
+/* =========================
+   CHECK PUBLIC LINK
+========================= */
+
+function checkPublicPage() {
+
+  const match =
+    window.location.hash.match(
+      /^#\/c\/([^/?#]+)/
+    );
+
+
+  if (match) {
+
+    const slug =
+      decodeURIComponent(match[1]);
+
     loadPublicPage(slug);
+
+  } else {
+
+    show("home");
   }
-});
+}
+
+
+window.addEventListener(
+  "hashchange",
+  checkPublicPage
+);
+
+
+/* =========================
+   START APP
+========================= */
+
+async function init() {
+
+  try {
+
+    const sessionResult =
+      await supabaseClient
+        .auth
+        .getSession();
+
+    currentUser =
+      sessionResult.data.session
+        ? sessionResult.data.session.user
+        : null;
+
+    updateNavigation();
+
+    checkPublicPage();
+
+  } catch (error) {
+
+    console.error(error);
+
+    show("home");
+  }
+}
+
 
 init();
-
-window.showPage = showPage;
-window.setAuthMode = setAuthMode;
-window.openDashboard = openDashboard;
-window.logout = logout;
-window.addBatch = addBatch;
-window.deleteBatch = deleteBatch;
-window.copyPublicLink = copyPublicLink;
-window.openPublicPage = openPublicPage;
-function show(page){
-  if(page==='home') showPage('home');
-  if(page==='auth') showPage('auth');
-}
-
-function dashboard(){
-  openDashboard();
-}
-
-function mode(type){
-  setAuthMode(type);
-}
-
-function copyLink(){
-  copyPublicLink();
-}
-
-function openLink(){
-  openPublicPage();
-}
-
-window.show = show;
-window.dashboard = dashboard;
-window.mode = mode;
-window.copyLink = copyLink;
-window.openLink = openLink;
