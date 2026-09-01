@@ -385,7 +385,6 @@ window.addEventListener('hashchange',()=>{
 });
 
 init();
-init();
 
 window.showPage = showPage;
 window.setAuthMode = setAuthMode;
@@ -395,3 +394,29 @@ window.addBatch = addBatch;
 window.deleteBatch = deleteBatch;
 window.copyPublicLink = copyPublicLink;
 window.openPublicPage = openPublicPage;
+function show(page){
+  if(page==='home') showPage('home');
+  if(page==='auth') showPage('auth');
+}
+
+function dashboard(){
+  openDashboard();
+}
+
+function mode(type){
+  setAuthMode(type);
+}
+
+function copyLink(){
+  copyPublicLink();
+}
+
+function openLink(){
+  openPublicPage();
+}
+
+window.show = show;
+window.dashboard = dashboard;
+window.mode = mode;
+window.copyLink = copyLink;
+window.openLink = openLink;
