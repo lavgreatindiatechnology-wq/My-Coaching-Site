@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Coaching Website</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="public-style.css">
+</head>
+<body>
+<div id="loading" class="loading">Loading Coaching Website...</div>
+
+<main id="site" class="hidden">
+  <section class="public-hero">
+    <div class="public-top">
+      <div id="topName" class="top-name">Coaching</div>
+      <a href="https://portal.greatindia.technology/" class="student-button">Student Login / Register</a>
+    </div>
+
+    <div class="hero-content">
+      <img id="logo" class="public-logo hidden" alt="Logo">
+      <div id="logoIcon" class="logo-icon">🎓</div>
+      <div class="welcome">WELCOME TO</div>
+      <h1 id="coachingName"></h1>
+      <p id="description"></p>
+    </div>
+  </section>
+
+  <div class="public-container">
+    <section class="public-card">
+      <div class="title-row"><span>📚</span><div><small>LEARN WITH US</small><h2>Current Batches</h2></div></div>
+      <div id="batches" class="batch-grid"></div>
+    </section>
+
+    <div class="two-col">
+      <section class="public-card">
+        <small>ABOUT OUR INSTITUTE</small>
+        <h2>Why Choose Us?</h2>
+        <p id="aboutText"></p>
+      </section>
+
+      <section class="public-card founder">
+        <img id="founderPhoto" class="founder-photo hidden" alt="Founder">
+        <div>
+          <small>FOUNDER / DIRECTOR</small>
+          <h2 id="founderName"></h2>
+          <p id="designation"></p>
+        </div>
+      </section>
+    </div>
+
+    <section class="public-card">
+      <small>GET IN TOUCH</small>
+      <h2>Contact Details</h2>
+      <div class="contact-grid">
+        <div>📱 <span id="phone"></span></div>
+        <div>✉️ <span id="email"></span></div>
+        <div>📍 <span id="address"></span></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="public-footer">
+  © <span id="year"></span> <span id="footerName"></span>
+</footer>
+
+<script src="config.js"></script>
+<script src="public.js"></script>
+</body>
+</html>

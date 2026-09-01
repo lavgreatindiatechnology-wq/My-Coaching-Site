@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Coaching Site</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">🎓 My Coaching Site</div>
+  <nav>
+    <button onclick="showPage('home')">Home</button>
+    <button id="authNav" onclick="showPage('auth')">Login / Register</button>
+    <button id="dashNav" class="hidden" onclick="showDashboard()">Dashboard</button>
+    <button id="logoutNav" class="hidden" onclick="logoutUser()">Logout</button>
+  </nav>
+</header>
+
+<main>
+<section id="home" class="page">
+  <div class="hero">
+    <div class="badge">🚀 अपना Coaching Website खुद बनाएं</div>
+    <h1>आपकी Coaching.<br><span>आपकी अपनी Website.</span></h1>
+    <p>Logo, Coaching जानकारी, Current Batches, Founder Photo और Contact Details डालें। अपना अलग Coaching Page तुरंत पाएं।</p>
+    <button class="primary big" onclick="showPage('auth')">अपनी Coaching Website बनाएं →</button>
+  </div>
+  <div class="features">
+    <div class="card"><b>🏫 Coaching Profile</b><p>नाम, लोगो और जानकारी</p></div>
+    <div class="card"><b>📚 Current Batches</b><p>Exam और Batch details</p></div>
+    <div class="card"><b>👨‍🏫 Founder Profile</b><p>Director का नाम और फोटो</p></div>
+    <div class="card"><b>🔗 Unique Page</b><p>Copy और Open करें</p></div>
+  </div>
+</section>
+
+<section id="auth" class="page hidden">
+  <div class="auth-card">
+    <h2>🎓 My Coaching Site</h2>
+    <div class="tabs">
+      <button id="loginTab" class="active" onclick="setAuthMode('login')">Login</button>
+      <button id="registerTab" onclick="setAuthMode('register')">Register</button>
+    </div>
+    <form id="authForm">
+      <input id="email" type="email" placeholder="Email" required>
+      <input id="password" type="password" placeholder="Password (कम से कम 6 अक्षर)" minlength="6" required>
+      <button id="authSubmit" class="primary" type="submit">Login</button>
+    </form>
+    <p id="authMessage"></p>
+  </div>
+</section>
+
+<section id="dashboard" class="page hidden">
+  <div class="dashboard-wrap">
+    <h1>🏫 Coaching Dashboard</h1>
+
+    <div id="linkBox" class="link-box hidden">
+      <b>🎉 आपका Coaching Page तैयार है!</b>
+      <div class="link-row">
+        <input id="publicLink" readonly>
+        <button type="button" onclick="copyPublicLink()">📋 Copy</button>
+        <button type="button" onclick="openPublicLink()">🌐 Open</button>
+      </div>
+    </div>
+
+    <form id="coachingForm" class="card form-card">
+      <h2>Coaching Information</h2>
+      <div class="grid">
+        <label>Coaching Name<input id="coachingName" required></label>
+        <label>Unique Page Name<input id="slug" placeholder="kartar-classes" required></label>
+      </div>
+
+      <label>About Coaching<textarea id="description" rows="4"></textarea></label>
+
+      <div class="grid">
+        <label>Coaching Logo<input id="logoFile" type="file" accept="image/*"><img id="logoPreview" class="preview hidden"></label>
+        <label>Founder Photo<input id="founderFile" type="file" accept="image/*"><img id="founderPreview" class="preview hidden"></label>
+      </div>
+
+      <h2>Founder / Director</h2>
+      <div class="grid">
+        <label>Name<input id="founderName"></label>
+        <label>Designation<input id="designation" value="Director"></label>
+      </div>
+
+      <h2>Contact Details</h2>
+      <div class="grid">
+        <label>Mobile<input id="phone"></label>
+        <label>Contact Email<input id="contactEmail" type="email"></label>
+      </div>
+      <label>Address<textarea id="address" rows="3"></textarea></label>
+
+      <button class="primary big" type="submit">💾 Save & Generate Page</button>
+      <p id="saveMessage"></p>
+    </form>
+
+    <div class="card form-card">
+      <h2>📚 Current Batches</h2>
+      <div class="batch-input">
+        <input id="batchName" placeholder="STATE BOARD EXAM 10TH">
+        <input id="batchDescription" placeholder="Batch details">
+        <button class="primary" type="button" onclick="addBatch()">+ Add Batch</button>
+      </div>
+      <div id="batchList"></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="main-footer">
+  <div>© 2026 My Coaching Site</div>
+  <strong>GREAT INDIA TECHNOLOGY</strong>
+</footer>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
