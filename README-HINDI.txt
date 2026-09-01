@@ -30,3 +30,11 @@ MY COACHING SITE - FULL FIX
    यहां GREAT INDIA TECHNOLOGY दिखाई नहीं देगा।
 
 7. Open button उसी tab में अलग Public Page खोलेगा।
+
+
+================ PROTECTION / OWNERSHIP ================
+यह project proprietary है। LICENSE.txt और SECURITY-NOTES.txt पढ़ें।
+Public coaching pages पर GREAT INDIA TECHNOLOGY branding नहीं जोड़ी गई है।
+Main Owner/Dashboard site पर GREAT INDIA TECHNOLOGY footer रहता है।
+IMPORTANT: Frontend code को public GitHub Pages पर 100% copy-proof नहीं बनाया जा सकता।
+Service-role key कभी भी GitHub/config.js में न डालें।

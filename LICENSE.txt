@@ -1,0 +1,10 @@
+PROPRIETARY LICENSE — GREAT INDIA TECHNOLOGY
+
+Copyright © 2026 Great India Technology. All rights reserved.
+
+This software, source code, design assets, database schema, branding, and documentation are proprietary. You may not copy, reproduce, redistribute, sell, sublicense, publish, or create a substantially identical derivative for commercial use without prior written permission from Great India Technology.
+
+IMPORTANT:
+A public website can be viewed and its appearance can be imitated. No browser-side HTML/CSS/JavaScript protection can guarantee that an AI tool or another developer cannot recreate a similar-looking website. This license protects the original work and gives clear ownership terms; it does not make copying technically impossible.
+
+For permission or licensing, contact the project owner / Great India Technology.

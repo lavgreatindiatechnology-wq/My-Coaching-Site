@@ -1,3 +1,8 @@
+/*
+ * My Coaching Site Platform
+ * Copyright © 2026 Great India Technology. All rights reserved.
+ * Proprietary platform code. See LICENSE.txt.
+ */
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = (id) => document.getElementById(id);
 

@@ -1,0 +1,10 @@
+MY COACHING SITE — SECURITY & OWNERSHIP NOTES
+
+1. Never put a Supabase service_role key in config.js or any public GitHub file.
+2. Only use the Supabase publishable/anon key in the frontend.
+3. Keep Row Level Security (RLS) enabled.
+4. Owners may only edit their own coaching data.
+5. Public visitors can read public coaching pages and public batches.
+6. Do not disable RLS to fix an error.
+7. GitHub Pages is a public static host: frontend source files can always be downloaded by visitors.
+8. The strongest protection is to keep sensitive logic and secrets on a backend/Edge Function and use legal licensing for the frontend design/code.

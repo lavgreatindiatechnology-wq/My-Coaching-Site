@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="hi"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Panel - My Coaching Site</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="admin-style.css">
+</head><body>
+<header class="topbar"><div><b>🛡️ Admin Panel</b><small>My Coaching Site Management</small></div><div class="actions"><a href="index.html">Main Site</a><button id="logoutBtn">Logout</button></div></header>
+<main class="container">
+<section id="loginBox" class="login-card"><h1>🛡️ Admin Login</h1><p>केवल अधिकृत Administrator के लिए</p><form id="adminLoginForm"><input id="adminEmail" type="email" placeholder="Admin Email" required><input id="adminPassword" type="password" placeholder="Password" required><button type="submit">Login to Admin Panel</button></form><p id="loginMsg"></p></section>
+<section id="panel" class="hidden">
+<div class="hero"><div><h1>Coaching Owners Management</h1><p>सभी Coaching Owner की details देखें, Edit करें या Delete करें।</p></div><button id="refreshBtn">🔄 Refresh</button></div>
+<div class="stats"><div><span id="totalCount">0</span><small>Total Coachings</small></div><div><span id="batchCount">0</span><small>Total Batches</small></div></div>
+<div class="toolbar"><input id="search" placeholder="🔎 Coaching Name, Founder, Email या Mobile से खोजें..."></div>
+<div class="table-wrap"><table><thead><tr><th>Coaching</th><th>Owner / Founder</th><th>Contact</th><th>Public Page</th><th>Created</th><th>Action</th></tr></thead><tbody id="rows"></tbody></table></div>
+<p id="status"></p>
+</section>
+</main>
+<div id="editModal" class="modal hidden"><div class="modal-card"><div class="modal-head"><h2>Edit Coaching</h2><button id="closeModal">✕</button></div><form id="editForm">
+<input type="hidden" id="editId">
+<label>Coaching Name<input id="editName" required></label>
+<label>Unique Page Name<input id="editSlug" required></label>
+<label>About Coaching<textarea id="editDescription" rows="4"></textarea></label>
+<div class="grid"><label>Founder / Director<input id="editFounder"></label><label>Designation<input id="editDesignation"></label></div>
+<div class="grid"><label>Mobile<input id="editPhone"></label><label>Email<input id="editEmail" type="email"></label></div>
+<label>Address<textarea id="editAddress" rows="3"></textarea></label>
+<div class="modal-actions"><button type="button" id="cancelEdit">Cancel</button><button type="submit" class="save">💾 Save Changes</button></div><p id="editMsg"></p>
+</form></div></div>
+<script src="config.js"></script><script src="admin.js"></script>
+</body></html>

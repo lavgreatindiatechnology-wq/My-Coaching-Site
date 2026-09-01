@@ -1,3 +1,4 @@
+/* Public page runtime — part of the My Coaching Site platform. */
 const sbPublic = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $p = (id) => document.getElementById(id);
 
