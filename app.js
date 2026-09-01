@@ -1,16 +1,387 @@
-const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);let user=null,coaching=null,authMode='login';const $=id=>document.getElementById(id);
-function show(id){['home','auth','dash','public'].forEach(x=>$(x).classList.add('hidden'));$(id).classList.remove('hidden');scrollTo(0,0)}
-function mode(m){authMode=m;$('loginTab').classList.toggle('active',m==='login');$('regTab').classList.toggle('active',m==='register');$('authSubmit').textContent=m==='login'?'Login':'Create Account'}
-async function init(){let s=(await db.auth.getSession()).data.session;user=s?.user||null;nav();let p=location.pathname.split('/').filter(Boolean),i=p.indexOf('c');if(i>=0&&p[i+1])loadPublic(decodeURIComponent(p[i+1]))}
-function nav(){$('authBtn').classList.toggle('hidden',!!user);$('dashBtn').classList.toggle('hidden',!user);$('logoutBtn').classList.toggle('hidden',!user)}
-$('authForm').onsubmit=async e=>{e.preventDefault();$('authMsg').textContent='Please wait...';let r=authMode==='login'?await db.auth.signInWithPassword({email:$('email').value,password:$('password').value}):await db.auth.signUp({email:$('email').value,password:$('password').value});if(r.error){$('authMsg').textContent='❌ '+r.error.message;return}if(!r.data.session){$('authMsg').textContent='✅ Account created. Email confirmation करें।';return}user=r.data.user||r.data.session.user;nav();dashboard()};
-async function logout(){await db.auth.signOut();user=null;coaching=null;nav();show('home')}
-async function dashboard(){if(!user)return show('auth');show('dash');let r=await db.from('coachings').select('*').eq('owner_id',user.id).maybeSingle();coaching=r.data||null;if(coaching){for(let [id,v] of Object.entries({coachingName:coaching.coaching_name,slug:coaching.slug,description:coaching.description,founderName:coaching.founder_name,designation:coaching.founder_designation,phone:coaching.phone,contactEmail:coaching.email,address:coaching.address}))$(id).value=v||'';if(coaching.logo_url){$('logoPreview').src=coaching.logo_url;$('logoPreview').classList.remove('hidden')}if(coaching.founder_photo_url){$('founderPreview').src=coaching.founder_photo_url;$('founderPreview').classList.remove('hidden')}link();batches()}else{$('batches').textContent='पहले Coaching Save करें।'}}
-function preview(file,id){if(file){$(id).src=URL.createObjectURL(file);$(id).classList.remove('hidden')}}$('logo').onchange=e=>preview(e.target.files[0],'logoPreview');$('founderPhoto').onchange=e=>preview(e.target.files[0],'founderPreview');
-async function upload(f,type){if(!f)return null;let path=`${user.id}/${type}-${Date.now()}-${f.name}`;let r=await db.storage.from('coaching-images').upload(path,f);if(r.error)throw r.error;return db.storage.from('coaching-images').getPublicUrl(path).data.publicUrl}
-$('coachingForm').onsubmit=async e=>{e.preventDefault();try{$('saveMsg').textContent='Saving...';let logo=coaching?.logo_url||null,photo=coaching?.founder_photo_url||null;if($('logo').files[0])logo=await upload($('logo').files[0],'logo');if($('founderPhoto').files[0])photo=await upload($('founderPhoto').files[0],'founder');let slug=$('slug').value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');let x={owner_id:user.id,coaching_name:$('coachingName').value,slug,description:$('description').value,logo_url:logo,founder_name:$('founderName').value,founder_designation:$('designation').value||'Director',founder_photo_url:photo,phone:$('phone').value,email:$('contactEmail').value,address:$('address').value,updated_at:new Date().toISOString()};let r=coaching?await db.from('coachings').update(x).eq('id',coaching.id).select().single():await db.from('coachings').insert(x).select().single();if(r.error)throw r.error;coaching=r.data;$('saveMsg').textContent='✅ Saved!';link();batches()}catch(err){$('saveMsg').textContent='❌ '+err.message}};
-function link(){let base=location.href.split('/c/')[0].replace(/\/index\.html$/,'');$('publicLink').value=base+'/c/'+coaching.slug;$('linkBox').classList.remove('hidden')}function copyLink(){navigator.clipboard.writeText($('publicLink').value);alert('Link copied!')}function openLink(){location.href=$('publicLink').value}
-async function batches(){if(!coaching)return;let r=await db.from('batches').select('*').eq('coaching_id',coaching.id).order('created_at',{ascending:false});$('batches').innerHTML=(r.data||[]).map(x=>`<div class="batch-item"><span><b>${esc(x.batch_name)}</b><br><small>${esc(x.description||'')}</small></span><button onclick="delBatch('${x.id}')">🗑️</button></div>`).join('')||'अभी कोई Batch नहीं।'}async function addBatch(){if(!coaching)return alert('पहले Coaching Save करें।');if(!$('batchName').value.trim())return;let r=await db.from('batches').insert({coaching_id:coaching.id,batch_name:$('batchName').value.trim(),description:$('batchDesc').value.trim()});if(r.error)return alert(r.error.message);$('batchName').value='';$('batchDesc').value='';batches()}async function delBatch(id){await db.from('batches').delete().eq('id',id);batches()}
-const esc=s=>{let d=document.createElement('div');d.textContent=s||'';return d.innerHTML};
-async function loadPublic(slug){show('public');let r=await db.from('coachings').select('*').eq('slug',slug).single();if(r.error){$('publicContent').innerHTML='<div class="loading"><h1>Page Not Found</h1></div>';return}let c=r.data,b=(await db.from('batches').select('*').eq('coaching_id',c.id)).data||[];$('publicContent').innerHTML=`<div class="public-hero">${c.logo_url?`<img class="public-logo" src="${c.logo_url}">`:'🎓'}<div><h1>${esc(c.coaching_name)}</h1><p>${esc(c.description||'')}</p></div></div><div class="public-grid"><div class="card"><h2>📚 Current Batches</h2>${b.map(x=>`<p><b>${esc(x.batch_name)}</b><br><small>${esc(x.description||'')}</small></p>`).join('')||'No batches yet.'}</div><div class="card">${c.founder_photo_url?`<img class="founder-photo" src="${c.founder_photo_url}">`:''}<h2>👨‍🏫 ${esc(c.founder_designation||'Director')}</h2><h3>${esc(c.founder_name||'')}</h3></div><div class="card"><h2>📞 Contact Details</h2><p>📍 ${esc(c.address||'')}</p><p>📱 ${esc(c.phone||'')}</p><p>✉️ ${esc(c.email||'')}</p></div></div><a class="student" href="https://portal.greatindia.technology/">🎓 STUDENT LOGIN / REGISTER</a>`}
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let authMode='login',currentUser=null,currentCoaching=null;
+
+const $=id=>document.getElementById(id);
+const escapeHtml=s=>{const d=document.createElement('div');d.textContent=s||'';return d.innerHTML};
+
+function showPage(name){
+  ['homePage','authPage','dashboardPage','publicPage'].forEach(x=>$(x).classList.add('hidden'));
+  $(name+'Page').classList.remove('hidden');
+  window.scrollTo(0,0);
+}
+
+function setAuthMode(mode){
+  authMode=mode;
+  $('loginTab').classList.toggle('active',mode==='login');
+  $('registerTab').classList.toggle('active',mode==='register');
+  $('authTitle').textContent=mode==='login'?'अपने account में Login करें':'नई Coaching के लिए Account बनाएं';
+  $('authButton').textContent=mode==='login'?'Login':'Create Account';
+  $('authMessage').textContent='';
+}
+
+function getPublicSlug(){
+  const m=location.hash.match(/^#\/c\/([^/?#]+)/);
+  return m?decodeURIComponent(m[1]):null;
+}
+
+function updateGeneratedLink(){
+  if(!currentCoaching)return;
+  const base=location.origin+location.pathname;
+  $('publicLink').value=base+'#/c/'+encodeURIComponent(currentCoaching.slug);
+  $('generatedBox').classList.remove('hidden');
+}
+
+async function init(){
+  const {data:{session}}=await supabaseClient.auth.getSession();
+  currentUser=session?.user||null;
+  updateNav();
+  const slug=getPublicSlug();
+  if(slug)loadPublicPage(slug);
+}
+
+function updateNav(){
+  $('loginNav').classList.toggle('hidden',!!currentUser);
+  $('dashboardNav').classList.toggle('hidden',!currentUser);
+  $('logoutNav').classList.toggle('hidden',!currentUser);
+}
+
+$('authForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+
+  const email=$('authEmail').value.trim();
+  const password=$('authPassword').value;
+
+  $('authMessage').textContent='Please wait...';
+
+  const r=authMode==='register'
+    ?await supabaseClient.auth.signUp({email,password})
+    :await supabaseClient.auth.signInWithPassword({email,password});
+
+  if(r.error){
+    $('authMessage').textContent='❌ '+r.error.message;
+    return;
+  }
+
+  if(authMode==='register'&&!r.data.session){
+    $('authMessage').textContent='✅ Account created! Email confirmation के बाद Login करें।';
+    return;
+  }
+
+  currentUser=r.data.user||r.data.session?.user;
+  updateNav();
+  openDashboard();
+});
+
+async function logout(){
+  await supabaseClient.auth.signOut();
+  currentUser=null;
+  currentCoaching=null;
+  updateNav();
+  showPage('home');
+}
+
+async function openDashboard(){
+  if(!currentUser){
+    showPage('auth');
+    return;
+  }
+
+  if(location.hash.startsWith('#/c/')){
+    history.replaceState(null,'',location.pathname);
+  }
+
+  showPage('dashboard');
+
+  const {data}=await supabaseClient
+    .from('coachings')
+    .select('*')
+    .eq('owner_id',currentUser.id)
+    .maybeSingle();
+
+  currentCoaching=data||null;
+
+  if(data){
+    $('coachingName').value=data.coaching_name||'';
+    $('slug').value=data.slug||'';
+    $('description').value=data.description||'';
+    $('founderName').value=data.founder_name||'';
+    $('founderDesignation').value=data.founder_designation||'Director';
+    $('phone').value=data.phone||'';
+    $('contactEmail').value=data.email||'';
+    $('address').value=data.address||'';
+
+    if(data.logo_url){
+      $('logoPreview').src=data.logo_url;
+      $('logoPreview').classList.remove('hidden');
+    }
+
+    if(data.founder_photo_url){
+      $('founderPreview').src=data.founder_photo_url;
+      $('founderPreview').classList.remove('hidden');
+    }
+
+    updateGeneratedLink();
+    loadBatches();
+  }else{
+    $('generatedBox').classList.add('hidden');
+    $('batchList').innerHTML='पहले Coaching को Save करें।';
+  }
+}
+
+$('logoFile').addEventListener('change',e=>preview(e,'logoPreview'));
+$('founderFile').addEventListener('change',e=>preview(e,'founderPreview'));
+
+function preview(e,id){
+  const f=e.target.files[0];
+
+  if(f){
+    $(id).src=URL.createObjectURL(f);
+    $(id).classList.remove('hidden');
+  }
+}
+
+async function uploadImage(file,folder){
+  if(!file)return null;
+
+  const ext=file.name.split('.').pop();
+  const path=`${currentUser.id}/${folder}-${Date.now()}.${ext}`;
+
+  const {error}=await supabaseClient
+    .storage
+    .from('coaching-images')
+    .upload(path,file,{upsert:true});
+
+  if(error)throw error;
+
+  return supabaseClient
+    .storage
+    .from('coaching-images')
+    .getPublicUrl(path).data.publicUrl;
+}
+
+$('coachingForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+
+  try{
+    $('saveMessage').textContent='Saving...';
+
+    let logo=currentCoaching?.logo_url||null;
+    let founderPhoto=currentCoaching?.founder_photo_url||null;
+
+    if($('logoFile').files[0]){
+      logo=await uploadImage($('logoFile').files[0],'logo');
+    }
+
+    if($('founderFile').files[0]){
+      founderPhoto=await uploadImage($('founderFile').files[0],'founder');
+    }
+
+    const slug=$('slug').value.trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g,'-')
+      .replace(/-+/g,'-')
+      .replace(/^-|-$/g,'');
+
+    const payload={
+      owner_id:currentUser.id,
+      coaching_name:$('coachingName').value.trim(),
+      slug,
+      description:$('description').value.trim(),
+      logo_url:logo,
+      address:$('address').value.trim(),
+      phone:$('phone').value.trim(),
+      email:$('contactEmail').value.trim(),
+      founder_name:$('founderName').value.trim(),
+      founder_designation:$('founderDesignation').value.trim()||'Director',
+      founder_photo_url:founderPhoto,
+      updated_at:new Date().toISOString()
+    };
+
+    const r=currentCoaching
+      ?await supabaseClient.from('coachings').update(payload).eq('id',currentCoaching.id).select().single()
+      :await supabaseClient.from('coachings').insert(payload).select().single();
+
+    if(r.error)throw r.error;
+
+    currentCoaching=r.data;
+
+    $('saveMessage').textContent='✅ Saved successfully! आपका page link तैयार है।';
+
+    updateGeneratedLink();
+    loadBatches();
+
+  }catch(err){
+    $('saveMessage').textContent='❌ '+err.message;
+  }
+});
+
+async function loadBatches(){
+  if(!currentCoaching)return;
+
+  const {data,error}=await supabaseClient
+    .from('batches')
+    .select('*')
+    .eq('coaching_id',currentCoaching.id)
+    .order('created_at',{ascending:false});
+
+  if(error){
+    $('batchList').textContent=error.message;
+    return;
+  }
+
+  $('batchList').innerHTML=(data||[]).map(b=>`
+    <div class="batch-item">
+      <div>
+        <b>${escapeHtml(b.batch_name)}</b>
+        <small>${escapeHtml(b.description||'')}</small>
+      </div>
+      <button onclick="deleteBatch('${b.id}')">🗑️</button>
+    </div>
+  `).join('')||'<p>अभी कोई Batch नहीं जोड़ा गया।</p>';
+}
+
+async function addBatch(){
+  const name=$('batchName').value.trim();
+  const description=$('batchDescription').value.trim();
+
+  if(!currentCoaching){
+    alert('पहले Coaching Save करें।');
+    return;
+  }
+
+  if(!name)return;
+
+  const {error}=await supabaseClient
+    .from('batches')
+    .insert({
+      coaching_id:currentCoaching.id,
+      batch_name:name,
+      description
+    });
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  $('batchName').value='';
+  $('batchDescription').value='';
+
+  loadBatches();
+}
+
+async function deleteBatch(id){
+  if(confirm('Delete this batch?')){
+    await supabaseClient
+      .from('batches')
+      .delete()
+      .eq('id',id);
+
+    loadBatches();
+  }
+}
+
+function copyPublicLink(){
+  navigator.clipboard.writeText($('publicLink').value);
+  alert('✅ Link copied!');
+}
+
+function openPublicPage(){
+  location.href=$('publicLink').value;
+}
+
+async function loadPublicPage(slug){
+  showPage('public');
+
+  const {data:c,error}=await supabaseClient
+    .from('coachings')
+    .select('*')
+    .eq('slug',slug)
+    .single();
+
+  if(error||!c){
+    $('publicContent').innerHTML=`
+      <div class="notfound">
+        <h1>Page Not Found</h1>
+        <p>यह Coaching Page उपलब्ध नहीं है।</p>
+      </div>
+    `;
+    return;
+  }
+
+  const {data:batches=[]}=await supabaseClient
+    .from('batches')
+    .select('*')
+    .eq('coaching_id',c.id)
+    .order('created_at',{ascending:false});
+
+  $('publicContent').innerHTML=`
+    <div class="public-hero">
+
+      ${c.logo_url
+        ?`<img class="public-logo" src="${c.logo_url}">`
+        :'<div class="public-logo placeholder">🎓</div>'}
+
+      <div>
+        <h1>${escapeHtml(c.coaching_name)}</h1>
+        <p>${escapeHtml(c.description||'Welcome to our Coaching Institute')}</p>
+      </div>
+
+    </div>
+
+    <div class="public-grid">
+
+      <section class="public-card">
+        <h2>📚 Current Batches</h2>
+
+        ${batches.length
+          ?batches.map(b=>`
+            <div class="public-batch">
+              <b>${escapeHtml(b.batch_name)}</b>
+              <p>${escapeHtml(b.description||'')}</p>
+            </div>
+          `).join('')
+          :'<p>Current batches जल्द उपलब्ध होंगे।</p>'}
+
+      </section>
+
+      <section class="public-card founder">
+
+        ${c.founder_photo_url
+          ?`<img src="${c.founder_photo_url}" class="founder-photo">`
+          :''}
+
+        <div>
+          <h2>👨‍🏫 ${escapeHtml(c.founder_designation||'Director')}</h2>
+          <h3>${escapeHtml(c.founder_name||'')}</h3>
+          <p>Founder / Director</p>
+        </div>
+
+      </section>
+
+      <section class="public-card contact">
+        <h2>📞 Contact Details</h2>
+
+        <p>📍 ${escapeHtml(c.address||'Address उपलब्ध नहीं')}</p>
+        <p>📱 ${escapeHtml(c.phone||'')}</p>
+        <p>✉️ ${escapeHtml(c.email||'')}</p>
+
+      </section>
+
+    </div>
+
+    <a class="student-btn" href="https://portal.greatindia.technology/">
+      🎓 STUDENT LOGIN / REGISTER
+    </a>
+  `;
+}
+
+window.addEventListener('hashchange',()=>{
+  const slug=getPublicSlug();
+
+  if(slug){
+    loadPublicPage(slug);
+  }
+});
+
 init();
