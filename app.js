@@ -385,3 +385,13 @@ window.addEventListener('hashchange',()=>{
 });
 
 init();
+init();
+
+window.showPage = showPage;
+window.setAuthMode = setAuthMode;
+window.openDashboard = openDashboard;
+window.logout = logout;
+window.addBatch = addBatch;
+window.deleteBatch = deleteBatch;
+window.copyPublicLink = copyPublicLink;
+window.openPublicPage = openPublicPage;
