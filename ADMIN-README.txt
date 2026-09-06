@@ -1,0 +1,1 @@
+Upload admin.html, admin.css and admin.js to the same GitHub repository. Run admin.sql in the same Supabase project. Then open /My-Coaching-Site/admin.html. Your email must already be in public.admin_users.
